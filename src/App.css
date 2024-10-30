@@ -1,0 +1,130 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  width: 100%;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  color: #213547;
+}
+
+h2 {
+  color: #213547;
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+}
+
+h3 {
+  color: #213547;
+  margin-bottom: 1rem;
+  font-size: 1.4rem;
+}
+
+p {
+  margin: 0.5rem 0;
+  color: #213547;
+  font-size: 1.1rem;
+}
+
+/* Launch items styling */
+.launch-item {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+/* Loading state styling */
+.loading {
+  color: #646cff;
+  font-size: 1.2rem;
+  margin: 2rem 0;
+}
+
+/* Success/Failure indicators */
+.success {
+  color: #28a745;
+}
+
+.failure {
+  color: #dc3545;
+}
+
+/* Tab styling overrides */
+.tab-button {
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  color: #213547;
+  font-weight: 500;
+}
+
+.tab-button:hover {
+  background: none;
+  color: #646cff;
+}
+
+.tab-button.active {
+  color: #646cff;
+  border-bottom: 2px solid #646cff;
+}
+
+/* Add this to your existing styles */
+.error {
+  color: #dc3545;
+  padding: 1rem;
+  border: 1px solid #dc3545;
+  border-radius: 4px;
+  margin: 1rem 0;
+  background-color: #fff5f5;
+}
