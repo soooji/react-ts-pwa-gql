@@ -28,8 +28,8 @@ export const pwaOptions: VitePWAOptions = {
     skipWaiting: true,
     runtimeCaching: [
       {
-        urlPattern: ({ url, request }) => {
-          return request.method === "POST" && url.pathname === "/";
+        urlPattern: ({ url }) => {
+          return url.href.includes('spacex-production.up.railway.app');
         },
         handler: "NetworkFirst",
         options: {
@@ -41,49 +41,21 @@ export const pwaOptions: VitePWAOptions = {
           cacheableResponse: {
             statuses: [0, 200],
           },
-          matchOptions: {
-            ignoreSearch: true,
-          },
+          networkTimeoutSeconds: 10, // Important: Timeout for network requests
           plugins: [
             {
-              cacheKeyWillBeUsed: async ({ request }) => {
-                const clone = request.clone();
-                const body = (await clone.json()) as {
-                  query: string;
-                  variables: unknown;
-                };
-                return new Request(
-                  `graphql:${JSON.stringify({
-                    query: body.query,
-                    variables: body.variables,
-                  })}`
-                );
-              },
-              cacheWillUpdate: async ({ response }) => {
-                try {
-                  const clone = response.clone();
-                  const data = (await clone.json()) as { errors?: unknown };
-                  if (response.ok && !data.errors) {
-                    return response;
-                  }
-                  return null;
-                } catch {
-                  return null;
-                }
-              },
               handlerDidError: async () => {
                 return new Response(
                   JSON.stringify({
                     data: null,
                     errors: [
                       {
-                        message:
-                          "You are offline and no cached data is available",
+                        message: "You are offline. Showing cached data if available.",
                       },
                     ],
                   }),
                   {
-                    status: 503,
+                    status: 200, // Return 200 to prevent retries
                     headers: {
                       "Content-Type": "application/json",
                     },
