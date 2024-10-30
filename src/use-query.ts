@@ -88,6 +88,12 @@ export function useQuery<TData>(
   // Fetch data with error handling
   const fetchData = useCallback(async (): Promise<void> => {
     const entry = getCacheEntry();
+    
+    // Don't set loading state if we have data and we're offline
+    if (!navigator.onLine && entry.data) {
+      return;
+    }
+
     entry.isLoading = true;
     entry.error = null;
     entry.notify();
@@ -97,7 +103,12 @@ export function useQuery<TData>(
       entry.data = data;
       entry.timestamp = Date.now();
     } catch (error) {
-      entry.error = error instanceof Error ? error : new Error(String(error));
+      // If we're offline and have cached data, keep using it
+      if (!navigator.onLine && entry.data) {
+        entry.error = new Error('Offline - Using cached data');
+      } else {
+        entry.error = error instanceof Error ? error : new Error(String(error));
+      }
       console.error("Query error:", error);
     } finally {
       entry.isLoading = false;
@@ -113,7 +124,10 @@ export function useQuery<TData>(
     const performFetch = async () => {
       if (entry.isLoading || !isMounted) return;
       
-      if (!entry.data || entry.isStale()) {
+      // Only fetch if:
+      // 1. We have no data
+      // 2. Data is stale and we're online
+      if (!entry.data || (entry.isStale() && navigator.onLine)) {
         await fetchData();
       }
     };
@@ -122,7 +136,7 @@ export function useQuery<TData>(
 
     // Set up background refetch interval if specified
     let intervalId: NodeJS.Timeout | undefined;
-    if (options.refetchInterval) {
+    if (options.refetchInterval && navigator.onLine) {
       intervalId = setInterval(() => {
         if (entry.isStale() && !entry.isLoading) {
           performFetch();
@@ -130,30 +144,23 @@ export function useQuery<TData>(
       }, options.refetchInterval);
     }
 
+    // Listen for online/offline events
+    const handleOnline = () => {
+      if (entry.isStale()) {
+        performFetch();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+
     return () => {
       isMounted = false;
       if (intervalId) {
         clearInterval(intervalId);
       }
+      window.removeEventListener('online', handleOnline);
     };
   }, [stringifiedKey, getCacheEntry, fetchData, options.refetchInterval]);
-
-  // Cache manipulation methods
-  const invalidate = useCallback(() => {
-    const entry = getCacheEntry();
-    entry.timestamp = 0; // Force refetch
-    fetchData();
-  }, [getCacheEntry, fetchData]);
-
-  const setData = useCallback(
-    (newData: TData) => {
-      const entry = getCacheEntry();
-      entry.data = newData;
-      entry.timestamp = Date.now();
-      entry.notify();
-    },
-    [getCacheEntry]
-  );
 
   const entry = getCacheEntry();
 
@@ -163,7 +170,19 @@ export function useQuery<TData>(
     isStale: entry.isStale(),
     error: entry.error,
     refetch: fetchData,
-    invalidate,
-    setData,
+    invalidate: useCallback(() => {
+      const entry = getCacheEntry();
+      entry.timestamp = 0;
+      fetchData();
+    }, [getCacheEntry, fetchData]),
+    setData: useCallback(
+      (newData: TData) => {
+        const entry = getCacheEntry();
+        entry.data = newData;
+        entry.timestamp = Date.now();
+        entry.notify();
+      },
+      [getCacheEntry]
+    ),
   };
 }
