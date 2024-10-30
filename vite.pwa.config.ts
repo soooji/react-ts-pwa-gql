@@ -1,5 +1,27 @@
 import { VitePWAOptions } from "vite-plugin-pwa";
 
+// Add type declarations for Web APIs
+/// <reference lib="webworker" />
+/// <reference lib="dom" />
+
+// Add type declaration for WorkboxPlugin
+interface WorkboxPlugin {
+  cacheKeyWillBeUsed?: ({ request }: { request: Request }) => Promise<Request>;
+  cacheWillUpdate?: ({ response }: { response: Response }) => Promise<Response | null>;
+  handlerDidError?: ({ request }: { request: Request }) => Promise<Response>;
+}
+
+// Add type declaration for CacheStorage if not available
+interface Cache {
+  put(request: Request, response: Response): Promise<void>;
+  match(request: Request): Promise<Response | undefined>;
+}
+
+interface CacheStorage {
+  open(cacheName: string): Promise<Cache>;
+}
+declare const caches: CacheStorage;
+
 export const pwaOptions: VitePWAOptions = {
   disable: false,
   registerType: "autoUpdate",
@@ -28,41 +50,70 @@ export const pwaOptions: VitePWAOptions = {
     skipWaiting: true,
     runtimeCaching: [
       {
-        urlPattern: ({ url }) => {
-          return url.href.includes('spacex-production.up.railway.app');
+        urlPattern: ({ url, request }) => {
+          return url.href.includes('spacex-production.up.railway.app') && request.method === 'POST';
         },
-        handler: "NetworkFirst",
+        handler: "CacheFirst",
         options: {
           cacheName: "graphql-cache",
           expiration: {
             maxEntries: 50,
-            maxAgeSeconds: 60 * 60 * 24, // 24 hours
+            maxAgeSeconds: 60 * 60 * 24,
           },
           cacheableResponse: {
             statuses: [0, 200],
           },
-          networkTimeoutSeconds: 10, // Important: Timeout for network requests
+          matchOptions: {
+            ignoreVary: true,
+          },
           plugins: [
             {
-              handlerDidError: async () => {
+              cacheKeyWillBeUsed: async ({ request }) => {
+                const body = await request.clone().text();
+                return new Request(`${request.url}:${body}`);
+              },
+              handlerDidError: async ({ request }) => {
+                try {
+                  const cache = await caches.open('graphql-cache');
+                  const cachedResponse = await cache.match(request);
+                  
+                  if (cachedResponse) {
+                    return cachedResponse;
+                  }
+                } catch (error) {
+                  console.error('Cache access error:', error);
+                }
+                
                 return new Response(
                   JSON.stringify({
                     data: null,
                     errors: [
                       {
-                        message: "You are offline. Showing cached data if available.",
+                        message: "You are offline. No cached data available.",
                       },
                     ],
                   }),
                   {
-                    status: 200, // Return 200 to prevent retries
+                    status: 200,
                     headers: {
                       "Content-Type": "application/json",
                     },
                   }
                 );
               },
-            },
+              cacheWillUpdate: async ({ response }) => {
+                try {
+                  const clone = response.clone();
+                  const data = await clone.json() as { errors?: unknown };
+                  if (response.ok && !data.errors) {
+                    return response;
+                  }
+                  return null;
+                } catch {
+                  return null;
+                }
+              },
+            } as WorkboxPlugin,
           ],
         },
       },
@@ -73,7 +124,7 @@ export const pwaOptions: VitePWAOptions = {
           cacheName: "static-resources",
           expiration: {
             maxEntries: 50,
-            maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+            maxAgeSeconds: 60 * 60 * 24 * 7,
           },
         },
       },
@@ -84,7 +135,7 @@ export const pwaOptions: VitePWAOptions = {
           cacheName: "images",
           expiration: {
             maxEntries: 60,
-            maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+            maxAgeSeconds: 60 * 60 * 24 * 30,
           },
         },
       },
