@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
 import { VitePWA } from 'vite-plugin-pwa'
 import { pwaOptions } from './vite.pwa.config'
 
@@ -10,17 +9,12 @@ export default defineConfig({
     react(),
     VitePWA(pwaOptions)
   ],
-  server: {
-    headers: {
-      'Service-Worker-Allowed': '/'
-    }
-  },
   build: {
+    sourcemap: true,
     rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html'),
+      output: {
+        manualChunks: undefined
       }
     }
-  },
-  publicDir: 'public',
-})
+  }
+});

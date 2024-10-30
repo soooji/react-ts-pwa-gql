@@ -22,9 +22,10 @@ export const pwaOptions: VitePWAOptions = {
     navigateFallback: "index.html",
     globPatterns: [
       "**/*.{js,css,html,ico,png,svg,woff2}",
-      "index.html",
-      "manifest.webmanifest",
     ],
+    cleanupOutdatedCaches: true,
+    clientsClaim: true,
+    skipWaiting: true,
     runtimeCaching: [
       {
         urlPattern: ({ url, request }) => {
@@ -117,20 +118,22 @@ export const pwaOptions: VitePWAOptions = {
       },
     ],
   },
-  strategies: "injectManifest",
-  srcDir: "src",
-  filename: "sw.ts",
-  injectRegister: "auto",
+  strategies: 'generateSW',
+  injectRegister: 'auto',
   devOptions: {
     enabled: true,
     type: "module",
     navigateFallback: "index.html",
   },
-  includeAssets: ["**/*"],
-  includeManifestIcons: true,
   minify: true,
   injectManifest: {
-    injectionPoint: undefined,
-    rollupFormat: 'iife'
-  }
+    injectionPoint: undefined
+  },
+  includeAssets: [
+    'favicon.ico',
+    'apple-touch-icon.png',
+    'masked-icon.svg',
+    'assets/**/*'
+  ],
+  includeManifestIcons: true
 };
