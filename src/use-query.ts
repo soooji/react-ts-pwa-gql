@@ -63,7 +63,6 @@ export function useQuery<TData>(
 ): QueryResult<TData> {
   const [, forceRender] = useState({});
   const stringifiedKey = JSON.stringify(queryKey);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   // Get or create cache entry with proper typing
   const getCacheEntry = useCallback((): CacheEntry<TData> => {
@@ -86,36 +85,9 @@ export function useQuery<TData>(
     };
   }, [getCacheEntry]);
 
-  // Handle online/offline status
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
   // Fetch data with error handling
   const fetchData = useCallback(async (): Promise<void> => {
     const entry = getCacheEntry();
-    
-    // Don't fetch if offline and we have data
-    if (isOffline && entry.data) {
-      entry.error = new Error('Offline - Using cached data');
-      return;
-    }
-
-    // Don't fetch if offline and no data
-    if (isOffline && !entry.data) {
-      entry.error = new Error('Offline - No cached data available');
-      return;
-    }
-
     entry.isLoading = true;
     entry.error = null;
     entry.notify();
@@ -131,7 +103,7 @@ export function useQuery<TData>(
       entry.isLoading = false;
       entry.notify();
     }
-  }, [fetchFn, getCacheEntry, isOffline]);
+  }, [fetchFn, getCacheEntry]);
 
   // Initial fetch and background updates
   useEffect(() => {
@@ -139,9 +111,8 @@ export function useQuery<TData>(
     const entry = getCacheEntry();
 
     const performFetch = async () => {
-      if (entry.isLoading || !isMounted || isOffline) return;
+      if (entry.isLoading || !isMounted) return;
       
-      // Only fetch if we have no data or if data is stale
       if (!entry.data || entry.isStale()) {
         await fetchData();
       }
@@ -149,9 +120,9 @@ export function useQuery<TData>(
 
     performFetch();
 
-    // Set up background refetch interval if specified and online
+    // Set up background refetch interval if specified
     let intervalId: NodeJS.Timeout | undefined;
-    if (options.refetchInterval && !isOffline) {
+    if (options.refetchInterval) {
       intervalId = setInterval(() => {
         if (entry.isStale() && !entry.isLoading) {
           performFetch();
@@ -165,23 +136,21 @@ export function useQuery<TData>(
         clearInterval(intervalId);
       }
     };
-  }, [stringifiedKey, getCacheEntry, fetchData, options.refetchInterval, isOffline]);
+  }, [stringifiedKey, getCacheEntry, fetchData, options.refetchInterval]);
 
   const entry = getCacheEntry();
 
   return {
     data: entry.data,
-    isLoading: entry.isLoading && !isOffline, // Don't show loading when offline
+    isLoading: entry.isLoading,
     isStale: entry.isStale(),
     error: entry.error,
     refetch: fetchData,
     invalidate: useCallback(() => {
-      if (!isOffline) {  // Only invalidate if online
-        const entry = getCacheEntry();
-        entry.timestamp = 0;
-        fetchData();
-      }
-    }, [getCacheEntry, fetchData, isOffline]),
+      const entry = getCacheEntry();
+      entry.timestamp = 0;
+      fetchData();
+    }, [getCacheEntry, fetchData]),
     setData: useCallback(
       (newData: TData) => {
         const entry = getCacheEntry();
